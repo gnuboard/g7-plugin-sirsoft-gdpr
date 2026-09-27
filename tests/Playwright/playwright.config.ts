@@ -66,6 +66,11 @@ function resolveBaseUrl(): string {
 export default defineConfig({
   testDir: './specs',
   outputDir: resolve(CORE_ROOT, 'test-results', ARTIFACT_SLUG),
+  // 통지 설정 spec 한 건이 저장·새로고침을 네 번 왕복하고 시험 발송 뒤 이력까지 확인한다.
+  // Playwright 기본 30초로는 이력 표본이 쌓인 환경에서 그 한 건이 먼저 끊기고, serial 이라
+  // 뒤 두 건이 아예 실행되지 않아 **설정 원복까지 건너뛴다**. 형제 확장(koreaexim)도 같은
+  // 이유로 config 에 시간을 명시한다.
+  timeout: 90_000,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -75,6 +80,18 @@ export default defineConfig({
     ['list'],
   ],
   use: {
+    // 실제 브라우저 UA 를 지정한다.
+    //
+    // Playwright 기본 UA 에는 `HeadlessChrome` 이 들어 있어 `SeoMiddleware` 의 봇 판정에
+    // 걸린다. 그러면 공개 사용자 경로 요청이 SPA 가 아니라 **검색엔진용 정적 HTML** 을
+    // 받는다 — `window.G7Core` 도 엔진 스크립트도 없는 화면이다. 그 상태에서도 서버가
+    // 심은 글꼴·아이콘은 정상이라 "페이지가 잘 뜬다" 로 보이고, 정작 재려던 SPA 동작
+    // (테마 적용·핸들러·확장 번들 로드)은 한 번도 실행되지 않은 채 통과한다.
+    //
+    // 봇 경로를 의도적으로 재는 spec 은 UA 가 아니라 `?_escaped_fragment_=` 로 유발하므로
+    // 여기서 실제 UA 를 고정해도 그 검증은 그대로 동작한다.
+    userAgent:
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
     baseURL: resolveBaseUrl(),
     // spec 이 한국어 화면 문구를 단언하므로 로케일을 고정한다.
     // 로케일 우선순위는 localStorage g7_locale → 서버 응답값 → 'ko' 이고, 서버값은 미인증

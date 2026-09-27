@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'annual_notice' => ['target_columns' => ['name' => 'Name', 'email' => 'Email', 'joined_at' => 'Joined on'], 'attributes' => ['page' => 'page', 'per_page' => 'items per page'], 'collection_summary' => 'Name, email and account information provided during registration and service use', 'purpose' => 'Member identification, service delivery and support', 'retention' => 'Retained until withdrawal, except records subject to statutory retention periods.', 'manual_run_label' => 'Send annual privacy notice', 'queued_count' => ':count recipients queued', 'test_queued' => 'Test queued. Check the log for results.', 'unavailable' => 'Check active member status and delivery channels.', 'status' => ['queued' => 'Queued', 'sent' => 'Sent', 'failed' => 'Failed']],
     'consent' => [
         'granted' => 'Consent has been saved.',
         'granted_again' => 'Consent has been renewed.',
@@ -29,6 +30,16 @@ return [
         'too_long_marketing' => 'Marketing — Domain cannot exceed 253 characters.',
         'must_be_array' => 'Each category must be an array of domain strings.',
     ],
+    'necessary_storage_allowlist' => [
+        'invalid_format_local_storage' => 'Local storage — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)',
+        'invalid_format_session_storage' => 'Session storage — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)',
+        'invalid_format_cookie' => 'Cookie — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)',
+        'too_long_local_storage' => 'Local storage — item cannot exceed 128 characters.',
+        'too_long_session_storage' => 'Session storage — item cannot exceed 128 characters.',
+        'too_long_cookie' => 'Cookie — item cannot exceed 128 characters.',
+        'must_be_array' => 'Each storage scope must be an array of item names.',
+        'invalid_scope' => 'Unknown storage scope: :scope (only local storage, session storage and cookies are allowed)',
+    ],
     'settings' => [
         'saved' => 'Settings have been saved.',
         'title' => 'GDPR Settings',
@@ -42,6 +53,7 @@ return [
             'cookie_categories' => 'Cookie Categories',
             'cookie_policy_version' => 'Cookie Policy Version',
             'auto_blocking' => 'Auto-blocking Policy',
+            'necessary_storage' => 'Strictly Necessary Storage',
             'auto_blocking_desc' => 'When the Cookie Banner is ON, external tracking resources matching the blocked-domain lists below are auto-blocked until the user consents. (No separate toggle — runs automatically with the banner.)',
         ],
         'nav' => [
@@ -55,7 +67,32 @@ return [
             'visible' => 'Visible',
             'hidden' => 'Hidden',
         ],
+        // Labels for array-item validation messages (otherwise raw keys leak).
+        'attributes' => [
+            'cookie_category_key' => 'cookie category key',
+            'cookie_category_label' => 'cookie category name',
+            'cookie_category_description' => 'cookie category description',
+            'blocked_domain' => 'blocked domain',
+            'necessary_storage_item' => 'strictly necessary storage item',
+        ],
         'fields' => [
+            // Labels used for the :attribute placeholder in validation messages. Without them
+            // Laravel prints the raw key ("annual notice.batch size field …").
+            'annual_notice' => [
+                'label' => 'Annual privacy notice',
+            ],
+            'annual_notice_enabled' => [
+                'label' => 'Automatic notice',
+            ],
+            'annual_notice_channels' => [
+                'label' => 'Delivery channels',
+            ],
+            'annual_notice_batch_size' => [
+                'label' => 'Recipients per run',
+            ],
+            'annual_notice_introduction' => [
+                'label' => 'Notice introduction',
+            ],
             'cookie_policy_version' => [
                 'label' => 'Policy Version',
                 'hint' => "Managed automatically by the system — operators do not enter values directly.\n• Adding/removing categories, category semantic changes, privacy policy page changes → new version auto-published + all members re-consent\n• Domain add/remove, label changes, etc. → no publication",
@@ -101,6 +138,9 @@ return [
                     'analytics' => 'Analytics — Blocked Domains',
                     'marketing' => 'Marketing — Blocked Domains',
                 ],
+            ],
+            'necessary_storage_allowlist' => [
+                'label' => 'Strictly Necessary Storage Allowlist',
             ],
             'cookie_categories' => [
                 'description' => 'Open each card\'s [Show details] to see the purpose of the four cookie categories and the blocked-tool examples.',
@@ -201,6 +241,7 @@ return [
                 'register' => 'Sign-up',
                 'mypage' => 'MyPage',
                 'mypage_renew_all' => 'MyPage bulk re-consent',
+                'withdraw' => 'Account withdrawal',
             ],
             'col' => [
                 'created_at' => 'Time',

@@ -9,7 +9,11 @@
             "gdprPolicyVersionHistory": "Policy Version History",
             "gdprPolicyVersionSnapshot": "Policy Version Snapshot",
             "gdprPublicSettings": "GDPR Public Settings",
-            "gdprSettings": "GDPR Settings"
+            "gdprSettings": "GDPR Settings",
+            "gdprNoticeLog": "Privacy notice log",
+            "gdprAnnualNoticePreview": "Annual notice target count",
+            "privacyTargets": "Annual notice target members",
+            "privacyManualRuns": "Privacy action manual run status"
         }
     },
     "consent": {
@@ -40,6 +44,16 @@
         "too_long_marketing": "Marketing — Domain cannot exceed 253 characters.",
         "must_be_array": "Each category must be an array of domain strings."
     },
+    "necessary_storage_allowlist": {
+        "invalid_format_local_storage": "Local storage — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)",
+        "invalid_format_session_storage": "Session storage — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)",
+        "invalid_format_cookie": "Cookie — invalid item format. (Letters, digits and _ . : @ + - ; a single trailing * is allowed)",
+        "too_long_local_storage": "Local storage — item cannot exceed 128 characters.",
+        "too_long_session_storage": "Session storage — item cannot exceed 128 characters.",
+        "too_long_cookie": "Cookie — item cannot exceed 128 characters.",
+        "must_be_array": "Each storage scope must be an array of item names.",
+        "invalid_scope": "Unknown storage scope: :scope (only local storage, session storage and cookies are allowed)"
+    },
     "settings": {
         "saved": "Settings have been saved.",
         "title": "GDPR Settings",
@@ -53,12 +67,15 @@
             "cookie_categories": "Cookie Categories",
             "cookie_policy_version": "Cookie Policy Version",
             "auto_blocking": "Auto-blocking Policy",
-            "auto_blocking_desc": "When the cookie banner is shown, external tracking resources matching the blocked-domain lists below are auto-blocked until the user consents."
+            "auto_blocking_desc": "When the cookie banner is shown, external tracking resources matching the blocked-domain lists below are auto-blocked until the user consents.",
+            "necessary_storage": "Strictly Necessary Storage",
+            "necessary_storage_desc": "Manage the items allowed to persist for visitors who have not consented to functional cookies. Anything not listed is cleared on every visit."
         },
         "nav": {
             "operator": "Operator",
             "cookie_banner": "Cookie Banner",
-            "auto_blocking_policy": "Auto-blocking Policy"
+            "auto_blocking_policy": "Auto-blocking Policy",
+            "necessary_storage": "Necessary Storage"
         },
         "status": {
             "enabled": "Enabled",
@@ -113,6 +130,27 @@
                     "marketing": "Marketing — Blocked Domains"
                 }
             },
+            "necessary_storage_allowlist": {
+                "warnings_title": "Notes",
+                "warning_purpose": "Only the items listed here survive without functional consent. Anything else is cleared on every visit, with no error or warning — it surfaces only as a setting that will not save.",
+                "warning_wildcard": "A trailing * matches every name with that prefix. For example g7_filters_* covers g7_filters_orders_1. The * is only allowed at the end.",
+                "warning_discovery": "The item names a newly installed extension writes are listed in that extension documentation, or visible in browser devtools (Application → Storage).",
+                "warning_necessary_only": "List only what the site genuinely needs to work. Adding tracking or analytics items defeats the pre-consent blocking principle.",
+                "locked_label": "Locked items (cannot be removed)",
+                "locked_hint": "The site cannot operate without these. They cannot be removed from the list.",
+                "tag_input_placeholder": "Type an item name and press Enter (e.g., g7_locale, myplugin_*)",
+                "tag_no_options": "No suggestions. Type to add.",
+                "scope": {
+                    "local_storage": "Local storage (localStorage)",
+                    "session_storage": "Session storage (sessionStorage)",
+                    "cookie": "Cookies"
+                },
+                "scope_desc": {
+                    "local_storage": "Persists after the browser is closed. User choices such as language and theme, and admin display preferences, live here.",
+                    "session_storage": "Cleared when the tab closes. Used to restore the original screen when returning from a payment or identity verification window.",
+                    "cookie": "Values the browser sends back to the server. Both server-set and client-written cookies are judged by this list."
+                }
+            },
             "cookie_categories": {
                 "description": "Open each card's [Show details] to see the purpose of the four cookie categories and the blocked-tool examples.",
                 "category_required_badge": "Required",
@@ -124,11 +162,11 @@
                     "scope_label": "Auto-blocking scope",
                     "tools_label": "Common tools",
                     "necessary": {
-                        "scope": "Not auto-blocked. Session/auth tokens, shopping basket identifier, user-selected language preference at registration, and cookie consent records are essential to site operation and always allowed.",
-                        "tools": "Session IDs, authentication tokens, CSRF tokens, shopping basket identifier, language preference, etc. (no configuration required)"
+                        "scope": "Not auto-blocked. Session/auth tokens, shopping basket identifier, user-selected language preference and display theme, and cookie consent records are essential to site operation and always allowed.",
+                        "tools": "Session IDs, authentication tokens, CSRF tokens, shopping basket identifier, language preference, display theme, etc. (no configuration required)"
                     },
                     "functional": {
-                        "scope": "External resources matching the functional blocked-domain list (in the Auto-blocking Policy tab) are auto-blocked until the user consents. User preferences such as dark mode and currency selection are also persisted only after consent.",
+                        "scope": "External resources matching the functional blocked-domain list (in the Auto-blocking Policy tab) are auto-blocked until the user consents. User preferences such as currency selection are also persisted only after consent.",
                         "tools": "Customer support chatbots (Crisp, Intercom, Tawk.to), translation widgets, user-preference synchronization services, etc."
                     },
                     "analytics": {
@@ -238,7 +276,8 @@
                 "preference_center": "Preferences",
                 "mypage": "MyPage",
                 "register": "Sign-up",
-                "mypage_renew_all": "MyPage bulk re-consent"
+                "mypage_renew_all": "MyPage bulk re-consent",
+                "withdraw": "Account withdrawal"
             },
             "col": {
                 "created_at": "Time",
@@ -323,5 +362,107 @@
         "operator_and_storage_line": "This site is operated by {entity}, and data is stored in {location}.",
         "operator_only_line": "This site is operated by {entity}.",
         "storage_only_line": "User data is stored in {location}."
-    }
+    },
+    "annual_notice": {
+        "title": "Annual privacy notice",
+        "description": "Notify active members annually once they have been registered for one year.",
+        "policy_hint": "Before enabling, explain the notices in your privacy policy and verify the data collected, purposes and retention periods.",
+        "enabled": "Enable automatic notices",
+        "channels": "Delivery channels",
+        "mail": "Email",
+        "database": "Site notification",
+        "batch_size": "Recipients per run (1–1,000)",
+        "introduction": "Introduction",
+        "test_send": "Send a test to me",
+        "test_queued": "Test queued. Check the log for delivery results.",
+        "save_before_test": "Save settings first. Tests do not change the annual notice schedule.",
+        "log_title": "Privacy notice log",
+        "log_description": "Requests and per-channel results are recorded separately. Queued does not mean delivered.",
+        "total": "{count} events",
+        "empty": "No notice history.",
+        "created_at": "Recorded at",
+        "user_id": "Member ID",
+        "status": "Status",
+        "kind": "Kind",
+        "test": "Test",
+        "scheduled": "Scheduled",
+        "targets": {
+            "count": "Due this cycle: {{count}}",
+            "view": "View targets",
+            "row_label": "Annual privacy usage notice",
+            "title": "Members due for the annual notice",
+            "hint": "Shows how many members would be notified even while this is off. Each run sends at most the send limit.",
+            "total": "{{count}} in total",
+            "empty": "There are no targets.",
+            "loading": "Loading...",
+            "close": "Close"
+        },
+        "manual_run": {
+            "run": "Run now",
+            "save_first_hint": "You have unsaved changes. Manual runs use the saved settings, so save first.",
+            "status_active": "{{status}} — queued {{at}} · {{by}}",
+            "last_completed": "Last manual send: {{at}} · {{by}} · {{count}} queued · {{remaining}} remaining",
+            "last_failed": "Last manual send failed: {{at}} · {{by}} — {{error}}",
+            "unknown_requester": "Unknown",
+            "modal_title": "{{target}} — manual run",
+            "confirm_desc": "Queue the notice once now without waiting for the scheduler. Each run queues up to the batch limit; run again to continue with the rest. Members who already received it this cycle are skipped.",
+            "count_label": "Due this cycle",
+            "count_value": "{{count}} members",
+            "loading": "Counting...",
+            "mode_label": "Method",
+            "modes": {
+                "anonymize": "Anonymize",
+                "delete": "Delete",
+                "erase_ip": "Erase author IP"
+            },
+            "disabled_notice": "Automatic annual notices are off. A manual run ignores the toggle and queues once with the saved channels and text.",
+            "irreversible": "Queued notices cannot be cancelled. Make sure the text and channels are saved before running.",
+            "queue_hint": "A queue worker must be running. You cannot run the same target again until its queued job finishes.",
+            "cancel": "Cancel",
+            "execute": "Run",
+            "executing": "Queuing...",
+            "queued_toast": "The notice has been queued. The result will appear when it finishes.",
+            "queue_failed": "Could not queue the run.",
+            "preview_failed": "Could not load the target count."
+        }
+    },
+    "edit_template": "Edit template",
+    "reset": "Restore defaults",
+    "notification_definitions": {
+        "reset_success": "Notification has been reset to default.",
+        "reset_failed": "Failed to reset notification.",
+        "reset_modal": {
+            "title": "Reset to Default",
+            "confirm_message": "All channel templates of this notification will be restored to defaults.",
+            "warning_message": "The saved subject, body, and recipient settings will be permanently lost.",
+            "target_label": "Target:",
+            "btn_confirm": "Reset",
+            "btn_confirming": "Resetting..."
+        },
+        "save_success": "Notification settings saved successfully.",
+        "save_error": "Failed to save notification settings.",
+        "edit_modal": {
+            "title": "Edit Notification Template",
+            "type_label": "Type:",
+            "channel_label": "Channel:",
+            "subject": "Subject",
+            "body": "Body",
+            "variables_title": "Available Variables",
+            "btn_preview": "Preview",
+            "validation_error": "Please check the input fields."
+        },
+        "preview_modal": {
+            "title": "Notification Preview",
+            "rendered_subject": "Rendered Subject",
+            "rendered_body": "Rendered Body",
+            "btn_close": "Close"
+        },
+        "card_description": "Choose delivery channels for each notification and edit per-channel subject, body and recipients. Definitions added by this extension do not appear on the core notification list.",
+        "empty_message": "No notification definitions yet."
+    },
+    "notification_channels": "Delivery channels",
+    "save_channels": "Save channels",
+    "cancel": "Cancel",
+    "channel_template_missing": "No template for this channel — nothing will be sent",
+    "notifications": "Notification templates"
 }

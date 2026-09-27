@@ -2,7 +2,11 @@
 
 namespace Plugins\Sirsoft\Gdpr\Http\Requests;
 
+use App\Rules\TranslatableField;
+use App\Services\PluginSettingsService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
+use Plugins\Sirsoft\Gdpr\Plugin;
 
 /**
  * 관리자 GDPR 설정 저장 요청 검증
@@ -37,6 +41,26 @@ class UpdateAdminSettingsRequest extends FormRequest
     private const DOMAIN_REGEX = '/^(\*\.)?[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i';
 
     /**
+     * 필수 저장 항목(저장소 키 / 쿠키 이름) 정규식
+     *
+     * - 이름 문자: 영숫자와 `_ . : @ + -` (코어·확장이 실제로 쓰는 키 형태)
+     * - 와일드카드 `*` 는 **끝에만** 1개 허용 (`g7_filters_*`)
+     * - `*` 단독 표기는 허용하지 않는다 — 접두사가 비면 전체 개방이 되어 게이트가 무력화된다
+     */
+    private const STORAGE_KEY_REGEX = '/^[A-Za-z0-9_.:@+\-]+\*?$/';
+
+    /**
+     * 필수 저장 항목 허용목록의 스코프 화이트리스트
+     *
+     * blocked_domains 는 카테고리 키를 검사하지 않고 남긴 빈틈이 있는데, 여기서는 남기지
+     * 않는다 — 스코프가 오타나면 그 항목은 어떤 판정에도 쓰이지 않은 채 저장되고,
+     * 운영자에게는 "등록했는데 안 되는" 상태로만 보인다.
+     *
+     * @var array<int, string>
+     */
+    private const ALLOWLIST_SCOPES = ['localStorage', 'sessionStorage', 'cookie'];
+
+    /**
      * 권한 확인 (permission 미들웨어에서 처리)
      *
      * @return bool
@@ -54,6 +78,20 @@ class UpdateAdminSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // 자동 통지가 꺼져 있으면 하위 항목은 운영에 쓰이지 않으므로 강제하지 않는다.
+            // 화면도 같은 조건으로 입력을 비활성화한다 — 끄기만 했는데 "상한은 필수" 로 막히면
+            // 운영자는 끌 수가 없다. 켠 상태에서는 종전 그대로 채널 1개 이상·상한 범위를 강제한다.
+            'annual_notice' => ['sometimes', 'array:enabled,channels,batch_size,introduction'],
+            'annual_notice.enabled' => ['required_with:annual_notice', 'boolean'],
+            'annual_notice.channels' => $this->annualNoticeEnabled()
+                ? ['required_with:annual_notice', 'array', 'min:1', 'max:2']
+                : ['sometimes', 'array', 'max:2'],
+            'annual_notice.channels.*' => ['required', 'string', 'distinct', 'in:mail,database'],
+            'annual_notice.batch_size' => $this->annualNoticeEnabled()
+                ? ['required_with:annual_notice', 'integer', 'min:'.Plugin::ANNUAL_NOTICE_MIN, 'max:'.Plugin::ANNUAL_NOTICE_MAX]
+                : ['sometimes', 'nullable', 'integer', 'min:'.Plugin::ANNUAL_NOTICE_MIN, 'max:'.Plugin::ANNUAL_NOTICE_MAX],
+            'annual_notice.introduction' => ['sometimes', new TranslatableField(maxLength: 2000, strictLocales: true)],
+            'annual_notice.introduction.*' => ['nullable', 'string', 'max:2000'],
             // 정책 메타데이터 — cookie_policy_version 은 gdpr_policy_versions 테이블이 SSoT.
             // 운영자가 직접 입력하지 않으므로 본 FormRequest 에서 검증하지 않음 (전달되어도 stripped).
             'privacy_policy_slug' => ['nullable', 'string', 'max:100', 'regex:/^[a-z0-9\-]*$/'],
@@ -86,6 +124,14 @@ class UpdateAdminSettingsRequest extends FormRequest
             'blocked_domains' => ['nullable', 'array'],
             'blocked_domains.*' => ['array'],
             'blocked_domains.*.*' => ['string', 'max:253', 'regex:'.self::DOMAIN_REGEX],
+
+            // 필수 저장 항목 허용목록 — 스코프(localStorage/sessionStorage/cookie) 별 문자열 배열.
+            // 스코프 키 화이트리스트는 withValidator() 에서 검사한다 (규칙 문법으로는 키를 못 건다).
+            // necessary_storage_locked 는 규칙에 넣지 않는다 → validated() 에서 자동 배제되어
+            // 운영자가 그 키를 보내도 저장되지 않는다 (잠금 항목은 코드가 정한다).
+            'necessary_storage_allowlist' => ['nullable', 'array'],
+            'necessary_storage_allowlist.*' => ['array'],
+            'necessary_storage_allowlist.*.*' => ['string', 'max:128', 'regex:'.self::STORAGE_KEY_REGEX],
         ];
     }
 
@@ -108,6 +154,14 @@ class UpdateAdminSettingsRequest extends FormRequest
             'blocked_domains.marketing.*.regex' => __('sirsoft-gdpr::messages.blocked_domains.invalid_format_marketing'),
             'blocked_domains.marketing.*.max' => __('sirsoft-gdpr::messages.blocked_domains.too_long_marketing'),
             'blocked_domains.*.array' => __('sirsoft-gdpr::messages.blocked_domains.must_be_array'),
+            // 스코프별 메시지 — 운영자가 어느 카드의 어느 항목이 잘못됐는지 즉시 식별 가능.
+            'necessary_storage_allowlist.localStorage.*.regex' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.invalid_format_local_storage'),
+            'necessary_storage_allowlist.localStorage.*.max' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.too_long_local_storage'),
+            'necessary_storage_allowlist.sessionStorage.*.regex' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.invalid_format_session_storage'),
+            'necessary_storage_allowlist.sessionStorage.*.max' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.too_long_session_storage'),
+            'necessary_storage_allowlist.cookie.*.regex' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.invalid_format_cookie'),
+            'necessary_storage_allowlist.cookie.*.max' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.too_long_cookie'),
+            'necessary_storage_allowlist.*.array' => __('sirsoft-gdpr::messages.necessary_storage_allowlist.must_be_array'),
         ];
     }
 
@@ -125,6 +179,14 @@ class UpdateAdminSettingsRequest extends FormRequest
     {
         return [
             // cookie_policy_version 은 자동 발행이므로 FormRequest 가 검증하지 않음 (attributes 도 불필요).
+            // 연간 통지 — 라벨이 없으면 "annual notice.batch size 필드는 …" 처럼 키가 그대로 노출된다.
+            'annual_notice' => __('sirsoft-gdpr::messages.settings.fields.annual_notice.label'),
+            'annual_notice.enabled' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_enabled.label'),
+            'annual_notice.channels' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_channels.label'),
+            'annual_notice.channels.*' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_channels.label'),
+            'annual_notice.batch_size' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_batch_size.label'),
+            'annual_notice.introduction' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_introduction.label'),
+            'annual_notice.introduction.*' => __('sirsoft-gdpr::messages.settings.fields.annual_notice_introduction.label'),
             'privacy_policy_slug' => __('sirsoft-gdpr::messages.settings.fields.privacy_policy_slug.label'),
             'legal_entity_name' => __('sirsoft-gdpr::messages.settings.fields.legal_entity_name.label'),
             'data_storage_location' => __('sirsoft-gdpr::messages.settings.fields.data_storage_location.label'),
@@ -132,7 +194,65 @@ class UpdateAdminSettingsRequest extends FormRequest
             'banner_position' => __('sirsoft-gdpr::messages.settings.fields.banner_position.label'),
             'cookie_categories' => __('sirsoft-gdpr::messages.settings.section.cookie_categories'),
             'blocked_domains' => __('sirsoft-gdpr::messages.settings.section.auto_blocking'),
+            'necessary_storage_allowlist' => __('sirsoft-gdpr::messages.settings.section.necessary_storage'),
+            // 배열 항목 — 커스텀 메시지가 없는 규칙(string·required_with 등)에서 인덱스가 붙은
+            // 원시 키(cookie_categories.0.label.ko)가 그대로 노출되던 자리다.
+            'cookie_categories.*.key' => __('sirsoft-gdpr::messages.settings.attributes.cookie_category_key'),
+            'cookie_categories.*.label' => __('sirsoft-gdpr::messages.settings.attributes.cookie_category_label'),
+            'cookie_categories.*.label.ko' => __('sirsoft-gdpr::messages.settings.attributes.cookie_category_label'),
+            'cookie_categories.*.label.en' => __('sirsoft-gdpr::messages.settings.attributes.cookie_category_label'),
+            'cookie_categories.*.description' => __('sirsoft-gdpr::messages.settings.attributes.cookie_category_description'),
+            'blocked_domains.*' => __('sirsoft-gdpr::messages.settings.section.auto_blocking'),
+            'blocked_domains.*.*' => __('sirsoft-gdpr::messages.settings.attributes.blocked_domain'),
+            'necessary_storage_allowlist.*' => __('sirsoft-gdpr::messages.settings.section.necessary_storage'),
+            'necessary_storage_allowlist.*.*' => __('sirsoft-gdpr::messages.settings.attributes.necessary_storage_item'),
         ];
+    }
+
+    /**
+     * 자동 통지 사용 여부(느슨한 참 판정).
+     *
+     * 저장값·전송값이 boolean 이 아닐 수 있어(문자열 '0'/'1', 체크박스 'on') 엄격 비교를 쓰지
+     * 않는다 — 코어 보안 탭의 two_factor_scope 조건식과 같은 이유다. 키를 아예 보내지 않은
+     * 요청은 하위 항목도 함께 안 보내므로(부분 저장) 꺼진 것으로 보고 강제하지 않는다.
+     *
+     * @return bool 자동 통지가 켜져 있으면 true
+     */
+    private function annualNoticeEnabled(): bool
+    {
+        return filter_var($this->input('annual_notice.enabled'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * 자동 통지가 꺼진 상태에서 비워져 들어온 하위 항목을 기존 저장값으로 복원합니다.
+     *
+     * 화면이 입력을 비활성화하면 빈 값이 올 수 있는데, 그대로 저장하면 운영자가 토글만
+     * 껐는데 상한·채널 설정이 사라진다. 채널이 비면 시험 발송까지 막히므로(저장된 채널을
+     * 그대로 검증한다) 상한과 같은 규칙으로 되돌린다. 켠 상태의 빈 값은 복원하지 않는다 —
+     * 그건 운영자가 지운 것이므로 검증이 422 로 알려야 한다.
+     *
+     * @return void 반환값 없음
+     */
+    private function normalizeAnnualNotice(): void
+    {
+        if (! is_array($this->input('annual_notice')) || $this->annualNoticeEnabled()) {
+            return;
+        }
+
+        $settings = app(PluginSettingsService::class);
+        $annualNotice = $this->input('annual_notice');
+        $batchSize = $this->input('annual_notice.batch_size');
+        $channels = $this->input('annual_notice.channels');
+
+        if ($batchSize === null || $batchSize === '') {
+            $annualNotice['batch_size'] = $settings->get('sirsoft-gdpr', 'annual_notice.batch_size', Plugin::ANNUAL_NOTICE_DEFAULT);
+        }
+
+        if ($channels === null || $channels === [] || $channels === '') {
+            $annualNotice['channels'] = $settings->get('sirsoft-gdpr', 'annual_notice.channels', Plugin::ANNUAL_NOTICE_CHANNELS);
+        }
+
+        $this->merge(['annual_notice' => $annualNotice]);
     }
 
     /**
@@ -143,11 +263,15 @@ class UpdateAdminSettingsRequest extends FormRequest
      * 3. cookie_categories 의 키 중 necessary 제외한 모든 키가 blocked_domains 에
      *    존재하도록 빈 배열로 자동 보충 (운영자가 새 카테고리 추가 시 UI iteration
      *    미렌더·검증 실패 방지)
+     * 4. necessary_storage_allowlist 도 같은 방식으로 정규화 (줄바꿈 문자열 분해 · trim ·
+     *    빈 항목 제거 · 세 스코프 빈 배열 보충)
      *
      * @return void
      */
     protected function prepareForValidation(): void
     {
+        $this->normalizeAnnualNotice();
+
         $cookieCategories = $this->normalizeJsonArray($this->input('cookie_categories'));
 
         $blockedDomains = $this->normalizeBlockedDomains(
@@ -160,7 +284,59 @@ class UpdateAdminSettingsRequest extends FormRequest
             $merge['blocked_domains'] = $blockedDomains;
         }
 
+        $necessaryAllowlist = $this->normalizeNecessaryAllowlist($this->input('necessary_storage_allowlist'));
+        if ($necessaryAllowlist !== null) {
+            $merge['necessary_storage_allowlist'] = $necessaryAllowlist;
+        }
+
         $this->merge($merge);
+    }
+
+    /**
+     * necessary_storage_allowlist 입력을 정규화합니다.
+     *
+     * 스코프별 값이 string 이면 줄바꿈으로 split → trim → 빈 항목 제거. 이미 array 면 항목만
+     * trim 합니다. 세 스코프 중 없는 것은 빈 배열로 보충해 UI 가 항상 세 카드를 그리도록
+     * 합니다. **키를 아예 보내지 않았으면 null 을 돌려** 기존 저장값을 보존합니다 — 빈 배열로
+     * 보충해 버리면 이 화면을 모르는 클라이언트의 저장 한 번이 허용목록을 통째로 비운다.
+     *
+     * 스코프 키 자체는 여기서 거르지 않습니다 — 오타 스코프를 조용히 버리면 운영자에게는
+     * "저장했는데 사라지는" 상태가 되므로, withValidator() 가 422 로 알립니다.
+     *
+     * @param  mixed  $input  necessary_storage_allowlist 입력값
+     * @return array<string, array<int, string>>|null
+     */
+    private function normalizeNecessaryAllowlist(mixed $input): ?array
+    {
+        if (! is_array($input)) {
+            return null;
+        }
+
+        $normalized = [];
+        foreach ($input as $scope => $value) {
+            if (is_string($value)) {
+                $normalized[$scope] = collect(preg_split('/\R/', $value))
+                    ->map(fn ($line) => is_string($line) ? trim($line) : '')
+                    ->filter(fn ($line) => $line !== '')
+                    ->values()
+                    ->all();
+            } elseif (is_array($value)) {
+                $normalized[$scope] = array_values(array_filter(
+                    array_map(fn ($line) => is_string($line) ? trim($line) : '', $value),
+                    fn ($line) => $line !== '',
+                ));
+            } else {
+                $normalized[$scope] = [];
+            }
+        }
+
+        foreach (self::ALLOWLIST_SCOPES as $scope) {
+            if (! array_key_exists($scope, $normalized)) {
+                $normalized[$scope] = [];
+            }
+        }
+
+        return $normalized;
     }
 
     /**
@@ -217,14 +393,16 @@ class UpdateAdminSettingsRequest extends FormRequest
     }
 
     /**
-     * 검증 후 cookie_categories 내 key 중복 차단.
+     * 검증 후 추가 검사:
+     * 1. cookie_categories 내 key 중복 차단
+     * 2. necessary_storage_allowlist 의 스코프 키가 화이트리스트에 있는지 검사
      *
-     * @param  \Illuminate\Validation\Validator  $validator
+     * @param  Validator  $validator
      * @return void
      */
-    public function withValidator(\Illuminate\Validation\Validator $validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function (\Illuminate\Validation\Validator $validator) {
+        $validator->after(function (Validator $validator) {
             $categories = (array) $this->input('cookie_categories', []);
             $keys = array_column($categories, 'key');
             if (count($keys) !== count(array_unique($keys))) {
@@ -234,6 +412,21 @@ class UpdateAdminSettingsRequest extends FormRequest
                 );
             }
 
+            $allowlist = $this->input('necessary_storage_allowlist');
+            if (is_array($allowlist)) {
+                foreach (array_keys($allowlist) as $scope) {
+                    if (in_array($scope, self::ALLOWLIST_SCOPES, true)) {
+                        continue;
+                    }
+
+                    $validator->errors()->add(
+                        'necessary_storage_allowlist.'.$scope,
+                        __('sirsoft-gdpr::messages.necessary_storage_allowlist.invalid_scope', [
+                            'scope' => is_scalar($scope) ? (string) $scope : '',
+                        ])
+                    );
+                }
+            }
         });
     }
 

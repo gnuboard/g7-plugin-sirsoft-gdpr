@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'annual_notice' => ['target_columns' => ['name' => '이름', 'email' => '이메일', 'joined_at' => '가입일'], 'attributes' => ['page' => '페이지', 'per_page' => '페이지당 건수'], 'collection_summary' => '회원 가입·서비스 이용 시 제공한 이름, 이메일 및 계정 정보', 'purpose' => '회원 식별, 서비스 제공 및 이용 문의 처리', 'retention' => '회원 탈퇴 시까지 보유하며, 법령상 보존 대상은 해당 보존 기간을 따릅니다.', 'manual_run_label' => '개인정보 연간 통지 발송', 'queued_count' => ':count명 통지 접수', 'test_queued' => '시험 발송을 접수했습니다. 이력에서 결과를 확인하세요.', 'unavailable' => '발송 가능한 활성 회원과 채널 설정을 확인하세요.', 'status' => ['queued' => '접수', 'sent' => '발송 완료', 'failed' => '발송 실패']],
     'consent' => [
         'granted' => '동의가 저장되었습니다.',
         'granted_again' => '동의가 갱신되었습니다.',
@@ -29,6 +30,16 @@ return [
         'too_long_marketing' => '마케팅 카테고리 — 도메인은 253자를 초과할 수 없습니다.',
         'must_be_array' => '카테고리별 도메인 목록은 배열이어야 합니다.',
     ],
+    'necessary_storage_allowlist' => [
+        'invalid_format_local_storage' => '브라우저 저장소 — 항목 형식이 올바르지 않습니다. (영문·숫자와 _ . : @ + - 사용, 끝에 * 하나만 가능)',
+        'invalid_format_session_storage' => '세션 저장소 — 항목 형식이 올바르지 않습니다. (영문·숫자와 _ . : @ + - 사용, 끝에 * 하나만 가능)',
+        'invalid_format_cookie' => '쿠키 — 항목 형식이 올바르지 않습니다. (영문·숫자와 _ . : @ + - 사용, 끝에 * 하나만 가능)',
+        'too_long_local_storage' => '브라우저 저장소 — 항목은 128자를 초과할 수 없습니다.',
+        'too_long_session_storage' => '세션 저장소 — 항목은 128자를 초과할 수 없습니다.',
+        'too_long_cookie' => '쿠키 — 항목은 128자를 초과할 수 없습니다.',
+        'must_be_array' => '저장소별 항목 목록은 배열이어야 합니다.',
+        'invalid_scope' => '알 수 없는 저장소 구분입니다: :scope (브라우저 저장소·세션 저장소·쿠키만 사용할 수 있습니다)',
+    ],
     'settings' => [
         'saved' => '설정이 저장되었습니다.',
         'title' => 'GDPR 설정',
@@ -42,6 +53,7 @@ return [
             'cookie_categories' => '쿠키 카테고리',
             'cookie_policy_version' => '쿠키 정책 버전',
             'auto_blocking' => '자동 차단 정책',
+            'necessary_storage' => '필수 저장 항목',
             'auto_blocking_desc' => '쿠키 배너 노출이 ON 일 때 아래 카테고리별 차단 도메인 목록의 외부 추적 리소스가 사용자 동의 전까지 자동 차단됩니다. (별도 토글 없음 — 배너 노출과 함께 자동 작동)',
         ],
         'nav' => [
@@ -55,7 +67,32 @@ return [
             'visible' => '노출',
             'hidden' => '숨김',
         ],
+        // 배열 항목 검증 문구용 라벨 — 없으면 cookie_categories.0.label.ko 처럼 키가 노출된다.
+        'attributes' => [
+            'cookie_category_key' => '쿠키 카테고리 구분',
+            'cookie_category_label' => '쿠키 카테고리 이름',
+            'cookie_category_description' => '쿠키 카테고리 설명',
+            'blocked_domain' => '차단 도메인',
+            'necessary_storage_item' => '필수 저장 항목',
+        ],
         'fields' => [
+            // 검증 메시지의 :attribute 치환용 라벨. 없으면 Laravel 이 키 이름을 그대로 노출한다
+            // ("annual notice.batch size 필드는 …") — 화면 라벨과 같은 문구를 쓴다.
+            'annual_notice' => [
+                'label' => '개인정보 연간 통지',
+            ],
+            'annual_notice_enabled' => [
+                'label' => '자동 통지 사용',
+            ],
+            'annual_notice_channels' => [
+                'label' => '발송 채널',
+            ],
+            'annual_notice_batch_size' => [
+                'label' => '1회 실행당 발송 상한',
+            ],
+            'annual_notice_introduction' => [
+                'label' => '통지문 서문',
+            ],
             'cookie_policy_version' => [
                 'label' => '정책 버전',
                 'hint' => "운영자가 직접 입력하지 않고 시스템이 자동 관리합니다.\n• 카테고리 추가/삭제, 카테고리 의미 변경, 정책 페이지 변경 → 새 버전 자동 발행 + 모든 회원 재동의\n• 도메인 추가/삭제, 라벨 변경 등 단순 변경 → 발행 없음",
@@ -101,6 +138,9 @@ return [
                     'analytics' => '분석 카테고리 차단 도메인',
                     'marketing' => '마케팅 카테고리 차단 도메인',
                 ],
+            ],
+            'necessary_storage_allowlist' => [
+                'label' => '필수 저장 항목 허용목록',
             ],
             'cookie_categories' => [
                 'description' => '쿠키 카테고리 4종의 용도와 차단 도구 예시는 각 카드의 [정보 펼치기] 에서 확인할 수 있습니다.',
@@ -201,6 +241,7 @@ return [
                 'register' => '회원가입',
                 'mypage' => '마이페이지',
                 'mypage_renew_all' => '마이페이지 일괄 재동의',
+                'withdraw' => '회원탈퇴',
             ],
             'col' => [
                 'created_at' => '시점',
